@@ -3,23 +3,26 @@ const closeBtn = document.querySelector(".close-btn");
 const chatbox = document.querySelector(".chatbox");
 const chatInput = document.querySelector(".chat-input textarea");
 const sendChatBtn = document.querySelector(".chat-input span");
-let userMessage = null; // Variable pour stocker le message de l'utilisateur
-const API_KEY = "COLLER-VOTRE-CLÉ-API"; // Collez votre clé API ici
+
+let userMessage = null; // Variable to store user's message
+const API_KEY = "PASTE-YOUR-API-KEY"; // Paste your API key here
 const inputInitHeight = chatInput.scrollHeight;
+
 const createChatLi = (message, className) => {
-    // Créer un élément de chat <li> avec le message et la classe passés
+    // Create a chat <li> element with passed message and className
     const chatLi = document.createElement("li");
     chatLi.classList.add("chat", `${className}`);
     let chatContent = className === "outgoing" ? `<p></p>` : `<span class="material-symbols-outlined">smart_toy</span><p></p>`;
     chatLi.innerHTML = chatContent;
     chatLi.querySelector("p").textContent = message;
-    return chatLi; // retourner l'élément de chat <li>
+    return chatLi; // return chat <li> element
 }
+
 const generateResponse = (chatElement) => {
-    const API_URL = "https://api.openai.com/v1/chat/completions";
-    const messageElement = chatElement.querySelector("p");
-    // Définir les propriétés et le message pour la requête API
-    const requestOptions = {
+   /* code initial avec openAI
+   
+   const API_URL = "https://api.openai.com/v1/chat/completions";
+       const requestOptions = {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -30,25 +33,77 @@ const generateResponse = (chatElement) => {
             messages: [{role: "user", content: userMessage}],
         })
     }
-    // Envoyer une requête POST à l'API, obtenir la réponse et définir la réponse comme texte du paragraphe
+
+   */
+
+
+// Test api mistral
+
+   const apiKey = process.env.MISTRAL_API_KEY || 'd7lOwbRTg8TjSw5h3FiOxCnSHjZKgjst';
+   const client = new MistralClient(apiKey);
+    userMessage= 'Donne une liste des questions à se poser pour répondre à la question suivante en posant des questions fermés en premier et en suite des questions ouvertes. Les questions de la liste ne devrons pas être des questions de rhétoriques, de clarification, de sondage et ne doivent pas être des questions pièges ou hypothétiques. Si deux questions sont trop proche ou on le même sens pose en une seule  pour les remplacer dans ta liste. Tu placera la phrase "Répondez par oui ou par non aux questions suivantes" avant la liste de question fermé et tu placeras la phrase "Recopiez une de ces questions pour aller plus loin ou taper le mot synthèse" avant la liste de question ouverte. Voici la question :';
+
+
+    const messageElement = chatElement.querySelector("p");
+
+    // Define the properties and message for the API request
+    const requestOptions = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+            model: "mistral-tiny", // changement openAi par mistral
+            messages: [{role: "system", content: userMessage}], // changelent role en system
+        })
+    }
+
+    // Send POST request to API, get response and set the reponse as paragraph text
     fetch(API_URL, requestOptions).then(res => res.json()).then(data => {
         messageElement.textContent = data.choices[0].message.content.trim();
     }).catch(() => {
         messageElement.classList.add("error");
-        messageElement.textContent = "Oops ! Quelque chose s'est mal passé. Veuillez réessayer.";
+        messageElement.textContent = "Oops! Something went wrong. Please try again.";
     }).finally(() => chatbox.scrollTo(0, chatbox.scrollHeight));
 }
+
 const handleChat = () => {
-    userMessage = chatInput.value.trim(); // Récupérer le message saisi par l'utilisateur et supprimer les espaces blancs supplémentaires
+    userMessage = chatInput.value.trim(); // Get user entered message and remove extra whitespace
     if(!userMessage) return;
-    // Effacer le texte du textarea et réinitialiser sa hauteur à sa valeur par défaut
+
+    // Clear the input textarea and set its height to default
     chatInput.value = "";
     chatInput.style.height = `${inputInitHeight}px`;
-    // Ajouter le message de l'utilisateur à la boîte de chat
+
+    // Append the user's message to the chatbox
     chatbox.appendChild(createChatLi(userMessage, "outgoing"));
     chatbox.scrollTo(0, chatbox.scrollHeight);
     
     setTimeout(() => {
-        // Afficher le message "Pensée..." en attendant la réponse
-        const
+        // Display "Thinking..." message while waiting for the response
+        const incomingChatLi = createChatLi("Thinking...", "incoming");
+        chatbox.appendChild(incomingChatLi);
+        chatbox.scrollTo(0, chatbox.scrollHeight);
+        generateResponse(incomingChatLi);
+    }, 600);
+}
 
+chatInput.addEventListener("input", () => {
+    // Adjust the height of the input textarea based on its content
+    chatInput.style.height = `${inputInitHeight}px`;
+    chatInput.style.height = `${chatInput.scrollHeight}px`;
+});
+
+chatInput.addEventListener("keydown", (e) => {
+    // If Enter key is pressed without Shift key and the window 
+    // width is greater than 800px, handle the chat
+    if(e.key === "Enter" && !e.shiftKey && window.innerWidth > 800) {
+        e.preventDefault();
+        handleChat();
+    }
+});
+
+sendChatBtn.addEventListener("click", handleChat);
+closeBtn.addEventListener("click", () => document.body.classList.remove("show-chatbot"));
+chatbotToggler.addEventListener("click", () => document.body.classList.toggle("show-chatbot"));
